@@ -1,0 +1,132 @@
+# ===================================
+# PostgreSQL Deployment
+# ===================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: a1ctf-argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:17-alpine
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: "a1ctf"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres"
+          volumeMounts:
+            - name: postgres-storage
+              mountPath: /var/lib/postgresql/data
+      volumes:
+        - name: postgres-storage
+          persistentVolumeClaim:
+            claimName: postgres-pvc
+
+# ===================================
+# Redis Deployment (无持久化)
+# ===================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: a1ctf-argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+
+# ===================================
+# A1CTF 主服务 Deployment
+# ===================================
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: a1ctf
+  namespace: a1ctf-argocd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: a1ctf
+  template:
+    metadata:
+      labels:
+        app: a1ctf
+    spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      initContainers:
+        - name: init-permissions
+          securityContext:
+            runAsUser: 0
+          image: busybox
+          command: ["sh", "-c", "chown -R 1000:1000 /app/data || true"]
+          volumeMounts:
+            - name: appdata-storage
+              mountPath: /app/data
+      containers:
+        - name: a1ctf
+          image: ghcr.io/carbofish/a1ctf/a1ctf:latest
+          ports:
+            - containerPort: 7777
+          env:
+            - name: GIN_MODE
+              value: "release"
+            - name: POSTGRES_HOST
+              value: "postgres"
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "postgres"
+            - name: REDIS_HOST
+              value: "redis:6379"
+          volumeMounts:
+            - name: appdata-storage
+              mountPath: /app/data
+            - name: config-volume
+              mountPath: /app/config.yaml
+              subPath: config.yaml
+            - name: k8sconfig-volume
+              mountPath: /app/k8sconfig.yaml
+              subPath: k8sconfig.yaml
+      volumes:
+        - name: appdata-storage
+          persistentVolumeClaim:
+            claimName: appdata-pvc
+        - name: config-volume
+          configMap:
+            name: a1ctf-config
+        - name: k8sconfig-volume
+          configMap:
+            name: a1ctf-k8sconfig

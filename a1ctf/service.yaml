@@ -1,0 +1,48 @@
+# ===================================
+# PostgreSQL Service
+# ===================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: a1ctf-argocd
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+
+# ===================================
+# Redis Service
+# ===================================
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: a1ctf-argocd
+spec:
+  ports:
+    - port: 6379
+      targetPort: 6379
+  selector:
+    app: redis
+
+# ===================================
+# A1CTF 主服务 Service
+# ===================================
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: a1ctf
+  namespace: a1ctf-argocd
+spec:
+  type: NodePort
+  ports:
+    - port: 80
+      targetPort: 7777
+      nodePort: 30083
+  selector:
+    app: a1ctf

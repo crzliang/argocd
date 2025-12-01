@@ -1,0 +1,92 @@
+# ===================================
+# Namespace
+# ===================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: a1ctf
+
+# ===================================
+# Persistent Volumes (for local cluster)
+# ===================================
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-postgres
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /home/ubuntu/a1ctf/data/postgres
+
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-appdata
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /home/ubuntu/a1ctf/data/appdata
+
+# ===================================
+# Persistent Volume Claims
+# ===================================
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: a1ctf-argocd
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: appdata-pvc
+  namespace: a1ctf-argocd
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+
+# ===================================
+# RBAC 权限配置
+# ===================================
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: a1ctf-admin
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "create", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: a1ctf-admin-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: a1ctf-admin
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: a1ctf-argocd
